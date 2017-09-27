@@ -28,6 +28,14 @@ export TLSDIR=${ETCDIR}/tls
 export DATADIR=/var/consul
 export BINDIR=/opt/consul
 
+## Variables para la generacion y firma de los certificados
+export TLS_C=ES
+export TLS_ST=Baleares
+export TLS_L=Llucmajor
+export TLS_O=GSIS
+export TLS_CN=Globalia Sistemas SLU
+export TLS_emailAddress=sysadmin@globalia-sistemas.com
+
 ##
 ## MAIN
 ##
@@ -102,10 +110,10 @@ CANAME=${CANAME:-consulCA}
 DEVCERTNAME=${DEVCERTNAME:-consul}
 
 openssl genrsa -out ${TLSDIR}/${CANAME}.key 2048 >/dev/null 2>&1
-openssl req -x509 -new -days 3650 -sha256 -nodes -subj "/C=ES/ST=Baleares/L=Llucmajor/O=GSIS/CN=Globalia Sistemas SLU/emailAddress=sysadmin@globalia-sistemas.com" -key ${TLSDIR}/${CANAME}.key -out ${TLSDIR}/${CANAME}.crt >/dev/null 2>&1
+openssl req -x509 -new -days 3650 -sha256 -nodes -subj "/C=${TLS_C}/ST=${TLS_ST}/L=${TLS_L}/O=${TLS_O}/CN=${TLS_CN}/emailAddress=${TLS_emailAddress}" -key ${TLSDIR}/${CANAME}.key -out ${TLSDIR}/${CANAME}.crt >/dev/null 2>&1
 openssl genrsa -out ${TLSDIR}/${DEVCERTNAME}.key 2048 >/dev/null 2>&1
-openssl req -new -newkey rsa:4096 -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.csr -subj "/C=ES/ST=Baleares/L=Llucmajor/O=GSIS/CN=Globalia Sistemas SLU/emailAddress=sysadmin@globalia-sistemas.com" >/dev/null 2>&1
-openssl req -x509 -new -newkey rsa:4096 -days 3650 -nodes -subj "/C=ES/ST=Baleares/L=Llucmajor/O=GSIS/CN=Globalia Sistemas SLU/emailAddress=sysadmin@globalia-sistemas.com" -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.crt >/dev/null 2>&1
+openssl req -new -newkey rsa:4096 -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.csr -subj "/C=${TLS_C}/ST=${TLS_ST}/L=${TLS_L}/O=${TLS_O}/CN=${TLS_CN}/emailAddress=${TLS_emailAddress}" >/dev/null 2>&1
+openssl req -x509 -new -newkey rsa:4096 -days 3650 -nodes -subj "/C=${TLS_C}/ST=${TLS_ST}/L=${TLS_L}/O=${TLS_O}/CN=${TLS_CN}/emailAddress=${TLS_emailAddress}" -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.crt >/dev/null 2>&1
 
 ##
 ## Definicion de Servidores que formaran el cluster.
