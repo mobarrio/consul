@@ -1,7 +1,13 @@
 #!/bin/bash
+#
+# Autor: Mariano J. Obarrio Miles
+# Fecha: 27/09/2017
+# Mail : mariano.obarrio@gmail.com
+# Description: Script para automatizar la instalacion y creacion de la configuracion de CONSUL.
 
-clear
-
+##
+## Definicion de funciones generales
+##
 function join_by { local IFS="$1"; shift; echo "$*"; }
 function validate_url(){
   FILEEXIST=$(wget -S --spider $1 2>&1|grep -ic 'HTTP/1.1 200 OK')
@@ -13,8 +19,21 @@ function validate_url(){
   fi
 }
 
+##
+## Definicion de variables globales
+##
+export ETCDIR=/etc/consul.d
+export CFGDIR=${ETCDIR}/server
+export TLSDIR=${ETCDIR}/tls
+export DATADIR=/var/consul
+export BINDIR=/opt/consul
+
+##
+## MAIN
+##
 echo 
 export CONSULVER=0.9.3
+clear
 echo -n "Version de CONSUL a instalar (0.9.3): "; read CONSULVER
 CONSULVER=${CONSULVER:-0.9.3}
 
@@ -23,6 +42,18 @@ if [ `validate_url $CONSUL_URL` ]; then
    echo "ERROR: $CONSUL_URL (No existe)"; exit 0
 fi
 
+##
+## Crea directorios de trabajo
+##
+mkdir -p $ETCDIR
+mkdir -p $CFGDIR
+mkdir -p $TLSDIR
+mkdir -p $DATADIR
+mkdir -p $BINDIR
+
+##
+## Verifica y crea usuario consul si no existe
+##
 echo 
 echo "Inicio instalacion CONSUL V${CONSULVER}"
 echo 
@@ -33,21 +64,16 @@ if [ $(grep -c consul /etc/passwd) -eq 0 ]; then
   echo
 fi
 
-export ETCDIR=/etc/consul.d
-export CFGDIR=${ETCDIR}/server
-export TLSDIR=${ETCDIR}/tls
-export DATADIR=/var/consul
-export BINDIR=/opt/consul
-
-mkdir -p $ETCDIR
-mkdir -p $CFGDIR
-mkdir -p $TLSDIR
-mkdir -p $DATADIR
-mkdir -p $BINDIR
+##
+## Asigna permisos a los directorios de instalacion
+##
 chown consul:consul $BINDIR
 chown consul:consul $DATADIR
 cd $BINDIR
 
+##
+## Descarga e instala consul
+##
 echo -n " - Descargando $CONSUL_URL. "
 wget -q $CONSUL_URL -O $BINDIR/consul_${CONSULVER}_linux_amd64.zip
 echo "Done. "
@@ -58,8 +84,14 @@ chmod 755 consul
 chown consul:consul consul
 echo "Done. "
 
+##
+## Crea una clave base64 de uso en los archivos de configuracion
+##
 export CONSUL_ENCRYPT=$(${BINDIR}/consul keygen)
 
+##
+## Generacion de certificados via OPENSSL para la utilizacion del GUI
+##
 echo
 CANAME=consulCA
 DEVCERTNAME=consul
@@ -75,9 +107,11 @@ openssl genrsa -out ${TLSDIR}/${DEVCERTNAME}.key 2048 >/dev/null 2>&1
 openssl req -new -newkey rsa:4096 -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.csr -subj "/C=ES/ST=Baleares/L=Llucmajor/O=GSIS/CN=Globalia Sistemas SLU/emailAddress=sysadmin@globalia-sistemas.com" >/dev/null 2>&1
 openssl req -x509 -new -newkey rsa:4096 -days 3650 -nodes -subj "/C=ES/ST=Baleares/L=Llucmajor/O=GSIS/CN=Globalia Sistemas SLU/emailAddress=sysadmin@globalia-sistemas.com" -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.crt >/dev/null 2>&1
 
-echo
-
+##
+## Definicion de Servidores que formaran el cluster.
+##
 NSERVER=1
+echo
 echo -n " - Numero de Consul Servers ($NSERVER): "; read NSERVER
 NSERVER=${NSERVER:-1}
 
@@ -126,6 +160,7 @@ cat <<EOF > ${CFGDIR}/${CFGNAME}-server.json
 EOF
 done
 
+## Informacion post instalacion
 echo
 echo "- Copie las configuraciones a cada server"
 for i in $(seq "$NSERVER");
