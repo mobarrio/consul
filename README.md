@@ -90,6 +90,13 @@ Inicio instalacion y configuracion de CONSUL (HASHICORP)
     2017/09/29 11:26:28 [INFO] consul: member 'node-1' joined, marking health alive
 ```
 
+### Servicios de ejemplo
+
+```
+ # echo '{"check": {"name": "Google UP", "script": "ping -c1 google.com >/dev/null", "interval": "30s"}}' >/etc/consul.d/google.json
+ # echo '{"service": {"name": "Grafana", "tags": ["grafana"], "port": 8080, "check": {"script": "curl localhost >/dev/null 2>&1", "interval": "10s"}}}' >/etc/consul.d/grafanaweb.json
+ # consul reload
+```
 
 ### Test
 
