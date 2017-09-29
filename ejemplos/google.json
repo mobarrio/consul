@@ -1,0 +1,1 @@
+{"check": {"name": "Google UP", "script": "ping -c1 google.com >/dev/null", "interval": "30s"}}
