@@ -6,6 +6,34 @@
 # Description: Script para automatizar la instalacion y creacion de la configuracion de CONSUL.
 
 ##
+## Definicion de variables globales
+##
+export ETCDIR=/etc/consul.d
+export CFGDIR=${ETCDIR}/server
+export TLSDIR=${ETCDIR}/tls
+export DATADIR=/var/consul
+export BINDIR=/opt/consul
+
+##
+## Variables para la generacion y firma de los certificados
+##
+export TLS_C=ES
+export TLS_ST=Baleares
+export TLS_L=Llucmajor
+export TLS_O=GSIS
+export TLS_CN=Globalia Sistemas SLU
+export TLS_emailAddress=sysadmin@globalia-sistemas.com
+
+##
+## Crea directorios de trabajo
+##
+mkdir -p $ETCDIR
+mkdir -p $CFGDIR
+mkdir -p $TLSDIR
+mkdir -p $DATADIR
+mkdir -p $BINDIR
+
+##
 ## Definicion de funciones generales
 ##
 function join_by { local IFS="$1"; shift; echo "$*"; }
@@ -20,57 +48,69 @@ function validate_url(){
 }
 
 ##
-## Definicion de variables globales
+## Generacion de certificados via OPENSSL para la utilizacion del GUI
 ##
-export ETCDIR=/etc/consul.d
-export CFGDIR=${ETCDIR}/server
-export TLSDIR=${ETCDIR}/tls
-export DATADIR=/var/consul
-export BINDIR=/opt/consul
+function genCert {
+  CANAME=consulCA
+  DEVCERTNAME=consul
+  echo " - Generando certificados para TLS/SSL"
+  echo -n "   CA Name (${CANAME}): "; read CANAME
+  echo -n "   Device Cert Name (${DEVCERTNAME}): "; read DEVCERTNAME
+  CANAME=${CANAME:-consulCA}
+  DEVCERTNAME=${DEVCERTNAME:-consul}
 
-## Variables para la generacion y firma de los certificados
-export TLS_C=ES
-export TLS_ST=Baleares
-export TLS_L=Llucmajor
-export TLS_O=GSIS
-export TLS_CN=Globalia Sistemas SLU
-export TLS_emailAddress=sysadmin@globalia-sistemas.com
-
-##
-## MAIN
-##
-echo 
-export CONSULVER=0.9.3
-clear
-echo -n "Version de CONSUL a instalar (0.9.3): "; read CONSULVER
-CONSULVER=${CONSULVER:-0.9.3}
-
-export CONSUL_URL="https://releases.hashicorp.com/consul/${CONSULVER}/consul_${CONSULVER}_linux_amd64.zip"
-if [ `validate_url $CONSUL_URL` ]; then
-   echo "ERROR: $CONSUL_URL (No existe)"; exit 0
-fi
+  openssl genrsa -out ${TLSDIR}/${CANAME}.key 2048 >/dev/null 2>&1
+  openssl req -x509 -new -days 3650 -sha256 -nodes -subj "/C=${TLS_C}/ST=${TLS_ST}/L=${TLS_L}/O=${TLS_O}/CN=${TLS_CN}/emailAddress=${TLS_emailAddress}" -key ${TLSDIR}/${CANAME}.key -out ${TLSDIR}/${CANAME}.crt >/dev/null 2>&1
+  openssl genrsa -out ${TLSDIR}/${DEVCERTNAME}.key 2048 >/dev/null 2>&1
+  openssl req -new -newkey rsa:4096 -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.csr -subj "/C=${TLS_C}/ST=${TLS_ST}/L=${TLS_L}/O=${TLS_O}/CN=${TLS_CN}/emailAddress=${TLS_emailAddress}" >/dev/null 2>&1
+  openssl req -x509 -new -newkey rsa:4096 -days 3650 -nodes -subj "/C=${TLS_C}/ST=${TLS_ST}/L=${TLS_L}/O=${TLS_O}/CN=${TLS_CN}/emailAddress=${TLS_emailAddress}" -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.crt >/dev/null 2>&1
+}
 
 ##
-## Crea directorios de trabajo
+## Solicita la version a descargar y valida que exista
 ##
-mkdir -p $ETCDIR
-mkdir -p $CFGDIR
-mkdir -p $TLSDIR
-mkdir -p $DATADIR
-mkdir -p $BINDIR
+function getVersion2Download {
+  clear
+  export CONSULVER=0.9.3
+  echo -n "Version de CONSUL a instalar (0.9.3): "; read CONSULVER
+  CONSULVER=${CONSULVER:-0.9.3}
+  export CONSUL_URL="https://releases.hashicorp.com/consul/${CONSULVER}/consul_${CONSULVER}_linux_amd64.zip"
+  if [ `validate_url $CONSUL_URL` ]; then
+     echo "ERROR: $CONSUL_URL (No existe)"; exit 0
+  fi
+
+  ##
+  ## Descarga e instala consul
+  ##
+  cd $BINDIR
+  echo -n " - Descargando $CONSUL_URL. "
+  wget -q $CONSUL_URL -O $BINDIR/consul_${CONSULVER}_linux_amd64.zip
+  echo "Done. "
+  echo -n " - Instalando consul. "
+  unzip consul_${CONSULVER}_linux_amd64.zip >/dev/null 2>&1
+  rm -f consul_${CONSULVER}_linux_amd64.zip >/dev/null 2>&1
+  chmod 755 consul
+  chown consul:consul consul
+  echo "Done. "
+}
 
 ##
 ## Verifica y crea usuario consul si no existe
 ##
-echo 
-echo "Inicio instalacion CONSUL V${CONSULVER}"
-echo 
-if [ $(grep -c consul /etc/passwd) -eq 0 ]; then 
-  echo " - Creando Usuario Consul"
-  useradd -m consul >/dev/null 2>&1
-  passwd consul
-  echo
-fi
+function crearUsuario {
+  if [ $(grep -c consul /etc/passwd) -eq 0 ]; then 
+    echo " - Creando Usuario Consul"
+    useradd -m consul >/dev/null 2>&1
+    passwd consul
+  fi
+}
+
+
+##
+## MAIN
+##
+getVersion2Download                                 ## Solicita la version a descargar y valida que exista
+crearUsuario                                        ## Verifica y crea usuario consul si no existe
 
 ##
 ## Asigna permisos a los directorios de instalacion
@@ -80,19 +120,6 @@ chown consul:consul $DATADIR
 cd $BINDIR
 
 ##
-## Descarga e instala consul
-##
-echo -n " - Descargando $CONSUL_URL. "
-wget -q $CONSUL_URL -O $BINDIR/consul_${CONSULVER}_linux_amd64.zip
-echo "Done. "
-echo -n " - Instalando consul. "
-unzip consul_${CONSULVER}_linux_amd64.zip >/dev/null 2>&1
-rm -f consul_${CONSULVER}_linux_amd64.zip >/dev/null 2>&1
-chmod 755 consul
-chown consul:consul consul
-echo "Done. "
-
-##
 ## Crea una clave base64 de uso en los archivos de configuracion
 ##
 export CONSUL_ENCRYPT=$(${BINDIR}/consul keygen)
@@ -100,26 +127,12 @@ export CONSUL_ENCRYPT=$(${BINDIR}/consul keygen)
 ##
 ## Generacion de certificados via OPENSSL para la utilizacion del GUI
 ##
-echo
-CANAME=consulCA
-DEVCERTNAME=consul
-echo " - Generando certificados para TLS/SSL"
-echo -n "   CA Name (${CANAME}): "; read CANAME
-echo -n "   Device Cert Name (${DEVCERTNAME}): "; read DEVCERTNAME
-CANAME=${CANAME:-consulCA}
-DEVCERTNAME=${DEVCERTNAME:-consul}
-
-openssl genrsa -out ${TLSDIR}/${CANAME}.key 2048 >/dev/null 2>&1
-openssl req -x509 -new -days 3650 -sha256 -nodes -subj "/C=${TLS_C}/ST=${TLS_ST}/L=${TLS_L}/O=${TLS_O}/CN=${TLS_CN}/emailAddress=${TLS_emailAddress}" -key ${TLSDIR}/${CANAME}.key -out ${TLSDIR}/${CANAME}.crt >/dev/null 2>&1
-openssl genrsa -out ${TLSDIR}/${DEVCERTNAME}.key 2048 >/dev/null 2>&1
-openssl req -new -newkey rsa:4096 -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.csr -subj "/C=${TLS_C}/ST=${TLS_ST}/L=${TLS_L}/O=${TLS_O}/CN=${TLS_CN}/emailAddress=${TLS_emailAddress}" >/dev/null 2>&1
-openssl req -x509 -new -newkey rsa:4096 -days 3650 -nodes -subj "/C=${TLS_C}/ST=${TLS_ST}/L=${TLS_L}/O=${TLS_O}/CN=${TLS_CN}/emailAddress=${TLS_emailAddress}" -key ${TLSDIR}/${DEVCERTNAME}.key -out ${TLSDIR}/${DEVCERTNAME}.crt >/dev/null 2>&1
+genCert
 
 ##
 ## Definicion de Servidores que formaran el cluster.
 ##
 NSERVER=1
-echo
 echo -n " - Numero de Consul Servers ($NSERVER): "; read NSERVER
 NSERVER=${NSERVER:-1}
 
@@ -133,9 +146,11 @@ done
 RETRY_JOIN=$(join_by , "${NODOS_RETRY[@]}")
 
 SERVER_PORT=8080
-echo
+DNS_PORT=8600
 echo -n " - Puerto para GUI: ($SERVER_PORT): "; read SERVER_PORT
+echo -n " - Puerto para DNS: ($DNS_PORT): "; read DNS_PORT
 SERVER_PORT=${SERVER_PORT:-8080}
+SERVER_PORT=${DNS_PORT:-8600'}
 
 
 for i in $(seq "$NSERVER");
@@ -143,8 +158,10 @@ do
 CFGNAME=$(echo ${NODOS[$i]}|tr . _)
 cat <<EOF > ${CFGDIR}/${CFGNAME}-server.json
 {
-  "bind_addr": "${NODOS[$i]}", 
-  "datacenter": "dc1",
+ "advertise_addr":"${NODOS[$i]}",
+  "client_addr":"0.0.0.0",
+  "bind_addr": "0.0.0.0",
+  "datacenter": "globalia",
   "data_dir": "${DATADIR}",
   "encrypt": "${CONSUL_ENCRYPT}",
   "log_level": "INFO",
@@ -157,11 +174,14 @@ cat <<EOF > ${CFGDIR}/${CFGNAME}-server.json
   "skip_leave_on_interrupt": true,
   "rejoin_after_leave": true,
   "retry_interval": "30s",
+  "verify_outgoing": true,
+  "verify_incoming": true,
   "key_file":  "${TLSDIR}/${DEVCERTNAME}.key",
   "cert_file": "${TLSDIR}/${DEVCERTNAME}.crt",
   "ca_file":   "${TLSDIR}/${CANAME}.crt",
   "ports": {
-    "https": ${SERVER_PORT}
+    "https": ${SERVER_PORT},
+    "dns": ${DNS_PORT},
   },
   "retry_join": [ $RETRY_JOIN ]
 }
