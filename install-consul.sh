@@ -184,7 +184,7 @@ DNS_PORT=8600
 echo -n " - Puerto para GUI: ($SERVER_PORT): "; read SERVER_PORT
 echo -n " - Puerto para DNS: ($DNS_PORT): "; read DNS_PORT
 SERVER_PORT=${SERVER_PORT:-8080}
-SERVER_PORT=${DNS_PORT:-8600}
+DNS_PORT=${DNS_PORT:-8600}
 
 
 for i in $(seq "$NSERVER");
