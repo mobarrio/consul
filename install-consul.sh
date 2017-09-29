@@ -5,10 +5,14 @@
 # Mail : mariano.obarrio@gmail.com
 # Description: Script para automatizar la instalacion y creacion de la configuracion de CONSUL.
 
+clear 
+
+echo "Inicio instalacion y configuracion de CONSUL (HASHICORP)"
 ##
 ## Definicion de variables globales
 ##
 export ETCDIR=/etc/consul.d
+export ETCTDIR=/etc/consul-template.d
 export CFGDIR=${ETCDIR}/server
 export TLSDIR=${ETCDIR}/tls
 export DATADIR=/var/consul
@@ -27,7 +31,15 @@ export TLS_emailAddress=sysadmin@globalia-sistemas.com
 ##
 ## Crea directorios de trabajo
 ##
+echo "- Creando directorios de trabajo"
+echo "   $ETCDIR. Done"
+echo "   $ETCTDIR. Done"
+echo "   $CFGDIR. Done"
+echo "   $TLSDIR. Done"
+echo "   $DATADIR. Done"
+echo "   $BINDIR. Done"
 mkdir -p $ETCDIR
+mkdir -p $ETCTDIR
 mkdir -p $CFGDIR
 mkdir -p $TLSDIR
 mkdir -p $DATADIR
@@ -70,9 +82,8 @@ function genCert {
 ## Solicita la version a descargar y valida que exista
 ##
 function getVersion2Download {
-  clear
   export CONSULVER=0.9.3
-  echo -n "Version de CONSUL a instalar (0.9.3): "; read CONSULVER
+  echo -n "- Version de CONSUL a instalar ($CONSULVER): "; read CONSULVER
   CONSULVER=${CONSULVER:-0.9.3}
   export CONSUL_URL="https://releases.hashicorp.com/consul/${CONSULVER}/consul_${CONSULVER}_linux_amd64.zip"
   if [ `validate_url $CONSUL_URL` ]; then
@@ -92,6 +103,29 @@ function getVersion2Download {
   chmod 755 consul
   chown consul:consul consul
   echo "Done. "
+
+
+  export CONSULTEMPLATEVER=0.19.3
+  echo -n "- Version de CONSUL TEMPLATE a instalar ($CONSULTEMPLATEVER): "; read CONSULVER
+  CONSULVER=${CONSULVER:-0.9.3}
+  export CONSUL_TEMPLATE_URL="https://releases.hashicorp.com/consul-template/${CONSULTEMPLATEVER}/consul-template_${CONSULTEMPLATEVER}_linux_amd64.zip"
+  if [ `validate_url $CONSUL_TEMPLATE_URL` ]; then
+     echo "ERROR: $CONSUL_TEMPLATE_URL (No existe)"; exit 0
+  fi
+
+  ##
+  ## Descarga e instala consul
+  ##
+  cd $BINDIR
+  echo -n " - Descargando $CONSULTEMPLATEVER. "
+  wget -q $CONSUL_TEMPLATE_URL -O $BINDIR/consul_template_${CONSULTEMPLATEVER}_linux_amd64.zip
+  echo "Done. "
+  echo -n " - Instalando consul-template. "
+  unzip consul_template_${CONSULTEMPLATEVER}_linux_amd64.zip >/dev/null 2>&1
+  rm -f consul_template_${CONSULTEMPLATEVER}_linux_amd64.zip >/dev/null 2>&1
+  chmod 755 consul-template
+  chown consul:consul consul
+  echo "Done. " 
 }
 
 ##
@@ -150,7 +184,7 @@ DNS_PORT=8600
 echo -n " - Puerto para GUI: ($SERVER_PORT): "; read SERVER_PORT
 echo -n " - Puerto para DNS: ($DNS_PORT): "; read DNS_PORT
 SERVER_PORT=${SERVER_PORT:-8080}
-SERVER_PORT=${DNS_PORT:-8600'}
+SERVER_PORT=${DNS_PORT:-8600}
 
 
 for i in $(seq "$NSERVER");
@@ -158,7 +192,7 @@ do
 CFGNAME=$(echo ${NODOS[$i]}|tr . _)
 cat <<EOF > ${CFGDIR}/${CFGNAME}-server.json
 {
- "advertise_addr":"${NODOS[$i]}",
+  "advertise_addr":"${NODOS[$i]}",
   "client_addr":"0.0.0.0",
   "bind_addr": "0.0.0.0",
   "datacenter": "globalia",
@@ -181,7 +215,7 @@ cat <<EOF > ${CFGDIR}/${CFGNAME}-server.json
   "ca_file":   "${TLSDIR}/${CANAME}.crt",
   "ports": {
     "https": ${SERVER_PORT},
-    "dns": ${DNS_PORT},
+    "dns": ${DNS_PORT}
   },
   "retry_join": [ $RETRY_JOIN ]
 }
@@ -200,7 +234,7 @@ done
 echo
 echo "- Starting CONSUL Server"
 CFGNAME=$(echo ${NODOS[1]}|tr . _)
-echo "  # $BINDIR/consul agent -ui -config-file=${CFGDIR}/${CFGNAME}-server.json -ui"
+echo "  # $BINDIR/consul agent -ui -config-file=${CFGDIR}/${CFGNAME}-server.json"
 echo
 echo " - NOTA: Para borrar la instalacion ejecute: rm -fr /etc/consul.d/ /var/consul/ /opt/consul/"
 echo
