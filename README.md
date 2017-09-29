@@ -1,5 +1,12 @@
 # consul
-Scripts para trabajar con CONSUL
+Script que automatiza la instalacion de  Hasicorp CONSUL y genera una configuracion basica.
+
+**Para saber cuales son las ultimas versiones de consul y consul-template verificar:** 
+```
+  Consul           : https://github.com/hashicorp/consul
+  Consul templates : https://github.com/hashicorp/consul-template
+```
+
 
 ### Instalacion:
 ```
