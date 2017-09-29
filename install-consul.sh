@@ -200,7 +200,7 @@ done
 echo
 echo "- Starting CONSUL Server"
 CFGNAME=$(echo ${NODOS[1]}|tr . _)
-echo "  # $BINDIR/consul agent -config-file=${CFGDIR}/${CFGNAME}-server.json -ui"
+echo "  # $BINDIR/consul agent -ui -config-file=${CFGDIR}/${CFGNAME}-server.json -ui"
 echo
 echo " - NOTA: Para borrar la instalacion ejecute: rm -fr /etc/consul.d/ /var/consul/ /opt/consul/"
 echo
