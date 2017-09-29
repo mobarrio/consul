@@ -13,7 +13,6 @@ echo "Inicio instalacion y configuracion de CONSUL (HASHICORP)"
 ##
 export ETCDIR=/etc/consul.d
 export ETCTDIR=/etc/consul-template.d
-export CFGDIR=${ETCDIR}/server
 export TLSDIR=${ETCDIR}/tls
 export DATADIR=/var/consul
 export BINDIR=/opt/consul
@@ -34,13 +33,11 @@ export TLS_emailAddress=sysadmin@globalia-sistemas.com
 echo "- Creando directorios de trabajo"
 echo "   $ETCDIR. Done"
 echo "   $ETCTDIR. Done"
-echo "   $CFGDIR. Done"
 echo "   $TLSDIR. Done"
 echo "   $DATADIR. Done"
 echo "   $BINDIR. Done"
 mkdir -p $ETCDIR
 mkdir -p $ETCTDIR
-mkdir -p $CFGDIR
 mkdir -p $TLSDIR
 mkdir -p $DATADIR
 mkdir -p $BINDIR
@@ -190,7 +187,7 @@ DNS_PORT=${DNS_PORT:-8600}
 for i in $(seq "$NSERVER");
 do
 CFGNAME=$(echo ${NODOS[$i]}|tr . _)
-cat <<EOF > ${CFGDIR}/${CFGNAME}-server.json
+cat <<EOF > ${ETCDIR}/config.json
 {
   "advertise_addr":"${NODOS[$i]}",
   "client_addr":"0.0.0.0",
@@ -210,6 +207,7 @@ cat <<EOF > ${CFGDIR}/${CFGNAME}-server.json
   "retry_interval": "30s",
   "verify_outgoing": true,
   "verify_incoming": true,
+  "enable_script_checks" : true,
   "key_file":  "${TLSDIR}/${DEVCERTNAME}.key",
   "cert_file": "${TLSDIR}/${DEVCERTNAME}.crt",
   "ca_file":   "${TLSDIR}/${CANAME}.crt",
@@ -228,13 +226,13 @@ echo "- Copie las configuraciones a cada server"
 for i in $(seq "$NSERVER");
 do
    CFGNAME=$(echo ${NODOS[$i]}|tr . _)
-   echo "  # scp ${CFGDIR}/${CFGNAME}-server.json ${NODOS[$i]}:${CFGDIR}/${CFGNAME}-server.json"
+   echo "  # scp ${ETCDIR}/config.json ${NODOS[$i]}:${ETCDIR}/config.json"
 done
 
 echo
 echo "- Starting CONSUL Server"
 CFGNAME=$(echo ${NODOS[1]}|tr . _)
-echo "  # $BINDIR/consul agent -ui -config-file=${CFGDIR}/${CFGNAME}-server.json"
+echo "  # $BINDIR/consul agent -ui -config-file=${ETCDIR}"
 echo
 echo " - NOTA: Para borrar la instalacion ejecute: rm -fr /etc/consul.d/ /var/consul/ /opt/consul/"
 echo
