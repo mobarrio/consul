@@ -102,3 +102,7 @@ Inicio instalacion y configuracion de CONSUL (HASHICORP)
  
  80.0.152.10.in-addr.arpa        name = grafana01.node.globalia.consul.
 ```
+
+### UI
+
+<img src="https://raw.githubusercontent.com/mobarrio/consul/master/public/img/consul001.jpg" />
