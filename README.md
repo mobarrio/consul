@@ -105,4 +105,4 @@ Inicio instalacion y configuracion de CONSUL (HASHICORP)
 
 ### UI
 
-<img src="https://raw.githubusercontent.com/mobarrio/consul/master/public/img/consul001.jpg" />
+<img src="https://raw.githubusercontent.com/mobarrio/consul/master/img/consul001.jpg" />
